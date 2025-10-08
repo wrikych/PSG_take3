@@ -1,7 +1,6 @@
 # app.py
 from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
-from PSG_stuff import *  # or your own builder that writes to disk
 import io
 import os
 
@@ -21,6 +20,7 @@ SUBJECT_TOPICS = {
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    from PSG_stuff import generate_practice_set
     if request.method == "POST":
         student_name = request.form["student_name"].strip()
         desired_subject = request.form["desired_subject"].strip()
