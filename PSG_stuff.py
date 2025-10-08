@@ -21,6 +21,16 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
+import csv, sys
+
+# Raise the per-field limit well beyond your largest question text
+try:
+    csv.field_size_limit(sys.maxsize)
+except (OverflowError, ValueError):
+    # Fallback for platforms where maxsize is too large for the C long
+    csv.field_size_limit(2**31 - 1)
+
+
 
 # ---------------------------
 # Constants / DB connection
