@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PDF Generator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.cdnfonts.com/css/sofia-pro" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/sharp-sans" rel="stylesheet">
+  <style>
+    :root { --bg:#f7f7fb; --card:#ffffff; --text:#101828; --muted:#667085; --accent:#4a90e2; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: 'Sofia Pro','Sharp Sans',system-ui,-apple-system,sans-serif; }
+    .wrap { max-width: 760px; margin: 4rem auto; padding: 0 1rem; }
+    .card { background:var(--card); border-radius: 16px; box-shadow: 0 10px 30px rgba(16,24,40,.06); padding: 24px; }
+    h1 { margin:0 0 8px; font-size: 28px; }
+    p.lead { margin:0 0 24px; color: var(--muted); }
+    form { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    label { font-weight: 600; font-size: 14px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; background:white;
+    }
+    .row { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+    button {
+      appearance: none; border: 0; border-radius: 12px; padding: 12px 16px;
+      background: var(--accent); color: white; font-weight: 600; font-size: 15px; cursor: pointer;
+    }
+    button:hover { filter: brightness(.95); }
+    .help { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    /* Tag selector styles */
+    .tag-selector { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; display: flex; flex-wrap: wrap; gap: 6px; background:white; cursor:text; }
+    .tag { background: var(--accent); color: white; border-radius: 20px; padding: 4px 10px; font-size: 13px; display: flex; align-items: center; }
+    .tag button { margin-left: 6px; border: none; background: transparent; color: white; cursor: pointer; font-size: 14px; }
+    .tag-selector input { border: none; outline: none; flex: 1; padding: 6px; font-size: 14px; min-width: 120px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Create a Practice PDF</h1>
+      <p class="lead">Fill out the form and your PDF will download automatically.</p>
+
+      <form method="POST" action="/" enctype="application/x-www-form-urlencoded">
+        <div>
+          <label for="student_name">Student Name</label>
+          <input id="student_name" name="student_name" type="text" placeholder="e.g., Sarah Ortegon" required>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="desired_subject">Subject</label>
+            <select id="desired_subject" name="desired_subject" required>
+              {% for opt in subject_options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+            <div class="help">Select exactly one subject.</div>
+          </div>
+
+          <div>
+            <label for="desired_question_amount">Desired Question Amount</label>
+            <input id="desired_question_amount" name="desired_question_amount" type="number" min="1" step="1" placeholder="e.g., 20" required>
+          </div>
+        </div>
+
+        <div>
+          <!-- Point the label at the visible input, not the hidden field -->
+          <label for="topicInput">Topics</label>
+          <div id="topicSelector" class="tag-selector" onclick="focusInput()">
+            <!-- tags go here -->
+            <input type="text" id="topicInput" list="topicOptions" placeholder="Start typing a topic…">
+          </div>
+
+          <!-- Will be filled dynamically based on selected subject -->
+          <datalist id="topicOptions"></datalist>
+
+          <!-- hidden field to store selected topics -->
+          <input type="hidden" name="desired_topics" id="desired_topics">
+          <div class="help">Type to see suggestions. Changing subject resets selected topics.</div>
+        </div>
+
+        <button type="submit">Generate PDF</button>
+      </form>
+    </div>
+  </div>
+
+
+  <script>
+    // Subject -> topics mapping from Flask
+	const subjectTopics = {{ subject_topics | tojson | safe }};
+    const subjectDropdown = document.getElementById("desired_subject");
+    const datalist = document.getElementById("topicOptions");
+
+    const topicInput = document.getElementById("topicInput");
+    const topicSelector = document.getElementById("topicSelector");
+    const hiddenField = document.getElementById("desired_topics");
+
+    let selectedTopics = [];
+
+    function updateTopics() {
+      const subject = subjectDropdown.value;
+      const topics = subjectTopics[subject] || [];
+      datalist.innerHTML = "";
+      topics.forEach(opt => {
+        const option = document.createElement("option");
+        option.value = opt;
+        datalist.appendChild(option);
+      });
+      // Clear selected chips when subject changes
+      selectedTopics = [];
+      renderTags();
+    }
+
+    function renderTags() {
+      topicSelector.querySelectorAll(".tag").forEach(tag => tag.remove());
+      selectedTopics.forEach((topic, idx) => {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.innerHTML = topic + ' <button type="button" onclick="removeTag(' + idx + ')">&times;</button>';
+        topicSelector.insertBefore(tag, topicInput);
+      });
+      hiddenField.value = selectedTopics.join(",");
+    }
+
+    function removeTag(idx) {
+      selectedTopics.splice(idx, 1);
+      renderTags();
+    }
+
+    function focusInput() { topicInput.focus(); }
+
+    topicInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && topicInput.value.trim()) {
+        e.preventDefault();
+        const val = topicInput.value.trim();
+        const allowed = subjectTopics[subjectDropdown.value] || [];
+        if (allowed.length === 0 || allowed.includes(val)) {
+          if (!selectedTopics.includes(val)) {
+            selectedTopics.push(val);
+            renderTags();
+          }
+        }
+        topicInput.value = "";
+      }
+    });
+
+    topicInput.addEventListener("change", e => {
+      const val = topicInput.value.trim();
+      if (!val) return;
+      const allowed = subjectTopics[subjectDropdown.value] || [];
+      if (allowed.length === 0 || allowed.includes(val)) {
+        if (!selectedTopics.includes(val)) {
+          selectedTopics.push(val);
+          renderTags();
+        }
+      }
+      topicInput.value = "";
+    });
+
+    // Hook subject change -> refresh topics
+    subjectDropdown.addEventListener("change", updateTopics);
+
+    // Initialize on load (safe because script is at end of body)
+    updateTopics();
+    // If you prefer, also keep:
+    window.addEventListener("DOMContentLoaded", updateTopics);
+  </script>
+</body>
