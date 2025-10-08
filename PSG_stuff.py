@@ -21,14 +21,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
-# ---- your other helpers live here (unchanged) ----
-from transcription_helpers import (
-    # these are referenced by your pipeline
-    create_student_data as _create_student_data,  # if you actually rely on a different one, adjust imports
-    # if those helpers are actually the functions you defined below, ignore this; otherwise import what you need
-)
-# If the above import shadows functions defined here, remove/adjust as needed.
-
 
 # ---------------------------
 # Constants / DB connection
